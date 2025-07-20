@@ -1,199 +1,71 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>SmartBudget App</title>
+  <title>Anonymous P2P Chat</title>
+  <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
   <style>
-    body {
-      font-family: 'Segoe UI', sans-serif;
-      background: linear-gradient(to right, #74ebd5, #acb6e5);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
-      margin: 0;
-    }
-
-    .container {
-      background: #fff;
-      padding: 30px;
-      border-radius: 15px;
-      box-shadow: 0 0 15px rgba(0,0,0,0.2);
-      width: 350px;
-      text-align: center;
-      animation: fadeIn 1s ease-in;
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: scale(0.9); }
-      to { opacity: 1; transform: scale(1); }
-    }
-
-    h1, h2 {
-      margin-bottom: 10px;
-      color: #2c3e50;
-    }
-
-    .members {
-      font-size: 0.9em;
-      color: #555;
-      margin-bottom: 15px;
-    }
-
-    input, select, button {
-      width: 100%;
-      margin: 8px 0;
-      padding: 10px;
-      border-radius: 5px;
-      border: 1px solid #ccc;
-      font-size: 1em;
-    }
-
-    button {
-      background-color: #2ecc71;
-      color: white;
-      font-weight: bold;
-      border: none;
-      transition: background 0.3s ease;
-    }
-
-    button:hover {
-      background-color: #27ae60;
-    }
-
-    #dashboard, #register {
-      display: none;
-    }
-
-    a {
-      color: #2980b9;
-      cursor: pointer;
-      text-decoration: underline;
-    }
-
-    .summary-box {
-      background: #f1f1f1;
-      padding: 15px;
-      border-radius: 10px;
-      margin-top: 15px;
-    }
+    body { font-family: sans-serif; background: #121212; color: white; text-align: center; }
+    input, button { padding: 10px; margin: 10px; border-radius: 5px; }
+    ul { list-style: none; padding: 0; max-width: 500px; margin: auto; }
+    .msg { background: #333; padding: 10px; margin: 5px 0; border-radius: 5px; }
   </style>
 </head>
 <body>
 
-<div class="container">
-  <h1>SmartBudget App</h1>
-  <div class="members">
-    Group Members: Ayesha, Zaid, Fatima, Bilal
-  </div>
+  <h2>Anonymous P2P Chat 💬</h2>
 
-  <div id="login">
-    <h2>Login</h2>
-    <input type="email" id="loginEmail" placeholder="Email" />
-    <input type="password" id="loginPass" placeholder="Password" />
-    <button onclick="login()">Login</button>
-    <p>Don't have an account? <a onclick="showRegister()">Register</a></p>
-  </div>
+  <p>Your ID: <span id="my-id">Connecting...</span></p>
+  <input id="peer-id" placeholder="Enter friend ID" />
+  <button onclick="connectPeer()">Connect</button>
 
-  <div id="register">
-    <h2>Register</h2>
-    <input type="text" id="regName" placeholder="Name" />
-    <input type="email" id="regEmail" placeholder="Email" />
-    <input type="password" id="regPass" placeholder="Password" />
-    <button onclick="register()">Register</button>
-    <p>Already have an account? <a onclick="showLogin()">Login</a></p>
-  </div>
+  <ul id="messages"></ul>
+  <input id="msg" placeholder="Type message..." />
+  <button onclick="sendMessage()">Send</button>
 
-  <div id="dashboard">
-    <h2>Dashboard</h2>
-    <h3>Add Transaction</h3>
-    <input type="number" id="amount" placeholder="Amount" />
-    <select id="type">
-      <option value="income">Income</option>
-      <option value="expense">Expense</option>
-    </select>
-    <input type="text" id="category" placeholder="Category" />
-    <button onclick="addTransaction()">Add</button>
+  <script>
+    const peer = new Peer();
+    let conn;
 
-    <div class="summary-box">
-      <h3>Summary</h3>
-      <p id="summary">No transactions yet.</p>
-    </div>
-    <button onclick="logout()" style="background:#e74c3c; margin-top:10px;">Logout</button>
-  </div>
-</div>
+    peer.on('open', id => {
+      document.getElementById('my-id').textContent = id;
+    });
 
-<script>
-  let income = 0, expense = 0;
+    peer.on('connection', connection => {
+      conn = connection;
+      setupConn();
+    });
 
-  function login() {
-    const email = document.getElementById("loginEmail").value;
-    const pass = document.getElementById("loginPass").value;
-    if (email && pass) {
-      showDashboard();
-    } else {
-      alert("Please fill all fields.");
-    }
-  }
-
-  function register() {
-    const name = document.getElementById("regName").value;
-    const email = document.getElementById("regEmail").value;
-    const pass = document.getElementById("regPass").value;
-    if (name && email && pass) {
-      alert("Registered successfully!");
-      showLogin();
-    } else {
-      alert("Please fill all fields.");
-    }
-  }
-
-  function addTransaction() {
-    const amt = parseFloat(document.getElementById("amount").value);
-    const type = document.getElementById("type").value;
-    const cat = document.getElementById("category").value;
-
-    if (isNaN(amt) || cat === "") {
-      alert("Please enter a valid amount and category.");
-      return;
+    function connectPeer() {
+      const friendId = document.getElementById('peer-id').value;
+      conn = peer.connect(friendId);
+      setupConn();
     }
 
-    if (type === "income") income += amt;
-    else expense += amt;
+    function setupConn() {
+      conn.on('open', () => {
+        conn.on('data', data => {
+          addMsg('Friend', data);
+        });
+      });
+    }
 
-    document.getElementById("summary").innerText = 
-      `Income: $${income.toFixed(2)}\nExpenses: $${expense.toFixed(2)}\nBalance: $${(income - expense).toFixed(2)}`;
-    
-    document.getElementById("amount").value = "";
-    document.getElementById("category").value = "";
-  }
+    function sendMessage() {
+      const msg = document.getElementById('msg').value;
+      if (!msg || !conn) return;
+      conn.send(msg);
+      addMsg('You', msg);
+      document.getElementById('msg').value = '';
+    }
 
-  function logout() {
-    income = 0;
-    expense = 0;
-    document.getElementById("summary").innerText = "No transactions yet.";
-    showLogin();
-  }
+    function addMsg(user, msg) {
+      const li = document.createElement('li');
+      li.className = 'msg';
+      li.textContent = `${user}: ${msg}`;
+      document.getElementById('messages').appendChild(li);
 
-  function showLogin() {
-    document.getElementById("login").style.display = "block";
-    document.getElementById("register").style.display = "none";
-    document.getElementById("dashboard").style.display = "none";
-  }
-
-  function showRegister() {
-    document.getElementById("login").style.display = "none";
-    document.getElementById("register").style.display = "block";
-    document.getElementById("dashboard").style.display = "none";
-  }
-
-  function showDashboard() {
-    document.getElementById("login").style.display = "none";
-    document.getElementById("register").style.display = "none";
-    document.getElementById("dashboard").style.display = "block";
-  }
-</script>
+      setTimeout(() => li.remove(), 10000);
+    }
+  </script>
 
 </body>
 </html>
